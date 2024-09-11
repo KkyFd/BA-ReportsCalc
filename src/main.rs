@@ -104,7 +104,7 @@ impl App for AppState {
                     ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
                     ui.add(egui::Slider::new(
                         &mut self.reports.quantities[i],
-                        0.0..=50000.0,
+                        0.0..=50000.0, // *Change this if you want a bigger slider
                     ));
                     ui.label(format!("{}: {}", label, self.reports.quantities[i]));
                 });

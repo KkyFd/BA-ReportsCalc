@@ -1,17 +1,14 @@
 #![windows_subsystem = "windows"]
+mod reports;
+use reports::*;
 
 use eframe::{egui, App};
 use egui::TextureHandle;
 use image::ImageReader;
-use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    io::{Read, Write},
-};
 
 fn main() {
     let options = eframe::NativeOptions::default();
-    eframe::run_native(
+    let _ = eframe::run_native(
         "BA Reports",
         options,
         Box::new(|cc| {
@@ -21,32 +18,6 @@ fn main() {
             Ok(Box::new(AppState { reports, textures }) as Box<dyn App>)
         }),
     );
-}
-
-#[derive(Serialize, Deserialize, Default)]
-struct Reports {
-    quantities: [f32; 4],
-    purple_reports: Option<f32>,
-    exp: Option<f32>,
-}
-
-impl Reports {
-    fn load_from_file(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut file = fs::File::open(file_path)?;
-        let mut data = String::new();
-        file.read_to_string(&mut data)?;
-        let mut reports: Reports = serde_json::from_str(&data)?;
-        reports.purple_reports = None;
-        reports.exp = None;
-        Ok(reports)
-    }
-
-    fn save_to_file(&self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let data = serde_json::to_string_pretty(self)?;
-        let mut file = fs::File::create(file_path)?;
-        file.write_all(data.as_bytes())?;
-        Ok(())
-    }
 }
 
 struct Textures {

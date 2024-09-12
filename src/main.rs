@@ -1,86 +1,94 @@
 #![windows_subsystem = "windows"]
 mod reports;
-use reports::*;
+use reports::Reports;
 
-use eframe::{egui, App};
-use egui::TextureHandle;
+use std::collections::HashMap;
+
+use eframe::egui;
+use eframe::App;
 use image::ImageReader;
 
+type Icons = HashMap<String, egui::TextureHandle>;
+
 fn main() {
-    let options = eframe::NativeOptions::default();
     let _ = eframe::run_native(
         "BA Reports",
-        options,
+        eframe::NativeOptions::default(),
         Box::new(|cc| {
-            let file_path = "reports.json";
-            let reports = Reports::load_from_file(file_path).unwrap_or_default();
-            let textures = Textures::load(cc);
-            Ok(Box::new(AppState { reports, textures }) as Box<dyn App>)
+            let reports = Reports::load_from_file("reports.json").unwrap_or_default();
+            Ok(Box::new(AppState::new(cc, reports)) as Box<dyn App>)
         }),
     );
 }
 
-struct Textures {
-    white_report: TextureHandle,
-    blue_report: TextureHandle,
-    orange_report: TextureHandle,
-    purple_report: TextureHandle,
-}
-
-impl Textures {
-    fn load(cc: &eframe::CreationContext<'_>) -> Self {
-        let load_texture = |path: &str| {
-            let image = ImageReader::open(path)
-                .unwrap()
-                .decode()
-                .unwrap()
-                .to_rgba8();
-            let size = [image.width() as usize, image.height() as usize];
-            let pixels = image.into_raw();
-            cc.egui_ctx.load_texture(
-                path,
-                egui::ColorImage::from_rgba_unmultiplied(size, &pixels),
-                egui::TextureOptions::default(),
-            )
-        };
-
-        Self {
-            white_report: load_texture("Icons/white_report.png"),
-            blue_report: load_texture("Icons/blue_report.png"),
-            orange_report: load_texture("Icons/orange_report.png"),
-            purple_report: load_texture("Icons/purple_report.png"),
-        }
-    }
-}
-
 struct AppState {
     reports: Reports,
-    textures: Textures,
+    textures: Icons,
+}
+
+impl AppState {
+    fn new(cc: &eframe::CreationContext<'_>, reports: Reports) -> Self {
+        Self {
+            reports: reports,
+            textures: Self::load_textures(cc),
+        }
+    }
+    fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
+        let paths = [
+            ("white_report", "Icons/white_report.png"),
+            ("blue_report", "Icons/blue_report.png"),
+            ("orange_report", "Icons/orange_report.png"),
+            ("purple_report", "Icons/purple_report.png"),
+        ];
+
+        paths
+            .iter()
+            .map(|(key, path)| {
+                let image = ImageReader::open(path)
+                    .unwrap()
+                    .decode()
+                    .unwrap()
+                    .to_rgba8();
+                let size = [image.width() as usize, image.height() as usize];
+                let pixels = image.into_raw();
+                let texture = cc.egui_ctx.load_texture(
+                    *path,
+                    egui::ColorImage::from_rgba_unmultiplied(size, &pixels),
+                    egui::TextureOptions::default(),
+                );
+                (key.to_string(), texture)
+            })
+            .collect()
+    }
 }
 
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Reports Amount");
-
             let labels = [
-                ("White Reports", &self.textures.white_report),
-                ("Blue Reports", &self.textures.blue_report),
-                ("Orange Reports", &self.textures.orange_report),
-                ("Purple Reports", &self.textures.purple_report),
+                ("White Reports", "white_report"),
+                ("Blue Reports", "blue_report"),
+                ("Orange Reports", "orange_report"),
+                ("Purple Reports", "purple_report"),
             ];
 
-            for (i, (label, texture)) in labels.iter().enumerate() {
+            // Text Boxes
+            for (i, (label, key)) in labels.iter().enumerate() {
                 ui.horizontal(|ui| {
-                    ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
-                    ui.add(egui::Slider::new(
-                        &mut self.reports.quantities[i],
-                        0.0..=50000.0, // *Change this if you want a bigger slider
-                    ));
+                    if let Some(texture) = self.textures.get(*key) {
+                        ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
+                    }
+                    let mut quantity_str = self.reports.quantities[i].to_string();
+                    ui.add(egui::TextEdit::singleline(&mut quantity_str).desired_width(50.0));
+                    if let Ok(value) = quantity_str.parse::<f32>() {
+                        self.reports.quantities[i] = value;
+                    }
                     ui.label(format!("{}: {}", label, self.reports.quantities[i]));
                 });
             }
 
+            // Buttons
             ui.horizontal(|ui| {
                 if ui.button("Convert").clicked() {
                     let purple_reports = (self.reports.quantities[0] / 200.0)
@@ -104,7 +112,8 @@ impl App for AppState {
                     }
                 }
             });
-
+            
+            // Bottom Results
             if let Some(purple_reports) = self.reports.purple_reports {
                 ui.separator();
                 ui.label(format!(

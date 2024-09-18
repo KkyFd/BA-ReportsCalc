@@ -1,6 +1,11 @@
 #![windows_subsystem = "windows"]
+mod character;
 mod reports;
+mod state;
+
+use character::Character;
 use reports::Reports;
+use state::State;
 
 use std::collections::HashMap;
 
@@ -9,28 +14,33 @@ use eframe::App;
 use image::ImageReader;
 
 type Icons = HashMap<String, egui::TextureHandle>;
+type Char = HashMap<String, Character>;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let reports = Reports::default();
+    let character = Character::default();
     let _ = eframe::run_native(
         "BA Reports",
         eframe::NativeOptions::default(),
         Box::new(|cc| {
-            let reports = Reports::load_from_file("reports.json").unwrap_or_default();
-            Ok(Box::new(AppState::new(cc, reports)) as Box<dyn App>)
+            Ok(Box::new(AppState::new(cc, reports.load_from_file().expect("How?"), character.load_from_file().expect("How?"))) as Box<dyn App>)
         }),
     );
+    Ok(())
 }
 
 struct AppState {
     reports: Reports,
     textures: Icons,
+    character: Character,
 }
 
 impl AppState {
-    fn new(cc: &eframe::CreationContext<'_>, reports: Reports) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, reports: Reports, character: Character) -> Self {
         Self {
-            reports: reports,
+            reports,
             textures: Self::load_textures(cc),
+            character,
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -112,7 +122,7 @@ impl App for AppState {
                     }
                 }
             });
-            
+
             // Bottom Results
             if let Some(purple_reports) = self.reports.purple_reports {
                 ui.separator();

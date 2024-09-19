@@ -13,13 +13,12 @@ pub struct Character {
 }
 
 impl State for Character {
-    fn load_from_file(&self,
-    ) -> Result<Box<dyn State>, Box<dyn std::error::Error>> {
+    fn load_from_file(&self) -> Result<Self, Box<dyn std::error::Error>> {
         let mut file = std::fs::File::open("character.json")?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
         let mut character: Character = serde_json::from_str(&buffer)?;
-        Ok(Box::new(character))
+        Ok(character)
     }
 
     fn save_to_file(&self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -29,4 +28,3 @@ impl State for Character {
         Ok(())
     }
 }
-

@@ -5,7 +5,6 @@ use std::{
     io::{Read, Write},
 };
 
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct Reports {
     pub quantities: [f32; 4],
@@ -14,15 +13,14 @@ pub struct Reports {
 }
 
 impl State for Reports {
-    fn load_from_file(&self, 
-    ) -> Result<Box<dyn State>, Box<dyn std::error::Error>> {
+    fn load_from_file(&self) -> Result<Self, Box<dyn std::error::Error>> {
         let mut file = std::fs::File::open("reports.json")?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
         let mut reports: Reports = serde_json::from_str(&buffer)?;
         reports.purple_reports = None;
         reports.exp = None;
-        Ok(Box::new(reports))
+        Ok(reports)
     }
 
     fn save_to_file(&self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {

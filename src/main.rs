@@ -22,8 +22,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = eframe::run_native(
         "BA Reports",
         eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            Ok(Box::new(AppState::new(cc, reports.load_from_file().expect("How?"), character.load_from_file().expect("How?"))) as Box<dyn App>)
+        Box::new(move |cc| {
+            Ok(Box::new(AppState::new(
+                cc,
+                reports.load_from_file().expect("How?"),
+                character.load_from_file().expect("How?"),
+            )) as Box<dyn App>)
         }),
     );
     Ok(())

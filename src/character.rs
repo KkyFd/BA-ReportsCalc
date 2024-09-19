@@ -7,9 +7,9 @@ use std::{
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Character {
-    name: Option<String>,
-    level: Option<u8>,
-    skills: Option<[u8; 4]>,
+    pub name: Option<String>,
+    pub level: Option<u8>,
+    pub skills: Option<[u8; 4]>,
 }
 
 impl State for Character {

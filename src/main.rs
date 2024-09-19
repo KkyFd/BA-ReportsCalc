@@ -17,17 +17,14 @@ type Icons = HashMap<String, egui::TextureHandle>;
 type Char = HashMap<String, Character>;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let t = TestWrapper {reports: Reports::default(), character: Character::default()};
+    let t = TestWrapper {
+        reports: Reports::default(),
+        character: Character::default(),
+    };
     let _ = eframe::run_native(
         "BA Reports",
         eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            Ok(Box::new(AppState::new(
-                cc,
-                t.reports,
-                t.character,
-            )) as Box<dyn App>)
-        }),
+        Box::new(|cc| Ok(Box::new(AppState::new(cc, t.reports, t.character)) as Box<dyn App>)),
     );
     Ok(())
 }
@@ -63,9 +60,9 @@ impl AppState {
             .iter()
             .map(|(key, path)| {
                 let image = ImageReader::open(path)
-                    .expect("Test 1")
+                    .unwrap()
                     .decode()
-                    .expect("Test 2")
+                    .unwrap()
                     .to_rgba8();
                 let size = [image.width() as usize, image.height() as usize];
                 let pixels = image.into_raw();
@@ -83,35 +80,29 @@ impl AppState {
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.group(|ui| {
-                    ui.heading("Reports Amount");
-                });
-                
-            let labels = [
-                ("White Reports", "white_report"),
-                ("Blue Reports", "blue_report"),
-                ("Orange Reports", "orange_report"),
-                ("Purple Reports", "purple_report"),
-            ];
+            ui.group(|ui| {
+                ui.heading("Reports Amount");
+                let labels = [
+                    ("White Reports", "white_report"),
+                    ("Blue Reports", "blue_report"),
+                    ("Orange Reports", "orange_report"),
+                    ("Purple Reports", "purple_report"),
+                ];
+                // Text Boxes
+                for (i, (label, key)) in labels.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        if let Some(texture) = self.textures.get(*key) {
+                            ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
+                        }
+                        let mut quantity_str = self.reports.quantities[i].to_string();
+                        ui.add(egui::TextEdit::singleline(&mut quantity_str).desired_width(50.0));
+                        if let Ok(value) = quantity_str.parse::<f32>() {
+                            self.reports.quantities[i] = value;
+                        }
+                        ui.label(format!("{}: {}", label, self.reports.quantities[i]));
+                    });
+                }
             });
-            
-
-            // Text Boxes
-            for (i, (label, key)) in labels.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if let Some(texture) = self.textures.get(*key) {
-                        ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
-                    }
-                    let mut quantity_str = self.reports.quantities[i].to_string();
-                    ui.add(egui::TextEdit::singleline(&mut quantity_str).desired_width(50.0));
-                    if let Ok(value) = quantity_str.parse::<f32>() {
-                        self.reports.quantities[i] = value;
-                    }
-                    ui.label(format!("{}: {}", label, self.reports.quantities[i]));
-                });
-            }
-
             // Buttons
             ui.horizontal(|ui| {
                 if ui.button("Convert").clicked() {
@@ -140,7 +131,6 @@ impl App for AppState {
                     }
                 }
             });
-
             // Bottom Results
             if let Some(purple_reports) = self.reports.purple_reports {
                 ui.separator();

@@ -83,13 +83,19 @@ impl AppState {
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Reports Amount");
+            ui.horizontal(|ui| {
+                ui.group(|ui| {
+                    ui.heading("Reports Amount");
+                });
+                
             let labels = [
                 ("White Reports", "white_report"),
                 ("Blue Reports", "blue_report"),
                 ("Orange Reports", "orange_report"),
                 ("Purple Reports", "purple_report"),
             ];
+            });
+            
 
             // Text Boxes
             for (i, (label, key)) in labels.iter().enumerate() {

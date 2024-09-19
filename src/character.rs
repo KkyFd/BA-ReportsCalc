@@ -14,10 +14,10 @@ pub struct Character {
 
 impl State for Character {
     fn load_from_file(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut file = std::fs::File::open("character.json")?;
+        let mut file = std::fs::File::open("characters.json")?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
-        let mut character: Character = serde_json::from_str(&buffer)?;
+        let character: Character = serde_json::from_str(&buffer)?;
         Ok(character)
     }
 

@@ -17,20 +17,24 @@ type Icons = HashMap<String, egui::TextureHandle>;
 type Char = HashMap<String, Character>;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let reports = Reports::default();
-    let character = Character::default();
+    let t = TestWrapper {reports: Reports::default(), character: Character::default()};
     let _ = eframe::run_native(
         "BA Reports",
         eframe::NativeOptions::default(),
-        Box::new(move |cc| {
+        Box::new(|cc| {
             Ok(Box::new(AppState::new(
                 cc,
-                reports.load_from_file().expect("How?"),
-                character.load_from_file().expect("How?"),
+                t.reports,
+                t.character,
             )) as Box<dyn App>)
         }),
     );
     Ok(())
+}
+
+struct TestWrapper {
+    reports: Reports,
+    character: Character,
 }
 
 struct AppState {
@@ -59,9 +63,9 @@ impl AppState {
             .iter()
             .map(|(key, path)| {
                 let image = ImageReader::open(path)
-                    .unwrap()
+                    .expect("Test 1")
                     .decode()
-                    .unwrap()
+                    .expect("Test 2")
                     .to_rgba8();
                 let size = [image.width() as usize, image.height() as usize];
                 let pixels = image.into_raw();
@@ -120,9 +124,13 @@ impl App for AppState {
                 }
 
                 if ui.button("Save").clicked() {
-                    let file_path = "reports.json";
-                    if let Err(err) = self.reports.save_to_file(file_path) {
+                    let reports_path = "reports.json";
+                    let character_path = "characters.json";
+                    if let Err(err) = self.reports.save_to_file(reports_path) {
                         eprintln!("Failed to save reports: {}", err);
+                    }
+                    if let Err(err) = self.character.save_to_file(character_path) {
+                        eprintln!("Failed to save characters: {}", err);
                     }
                 }
             });

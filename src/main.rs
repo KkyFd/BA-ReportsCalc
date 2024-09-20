@@ -14,6 +14,7 @@ use eframe::App;
 use image::ImageReader;
 
 type Icons = HashMap<String, egui::TextureHandle>;
+
 type Char = HashMap<String, Character>;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -89,7 +90,6 @@ impl AppState {
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Create a vertical layout for the main content
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     // Reports Group
@@ -124,32 +124,29 @@ impl App for AppState {
 
                     // Characters Group
                     ui.group(|ui| {
-                        let mut desired_level = String::with_capacity(2);
+                        let mut character_selection = String::new();
+                        let mut insert_text = String::from("Name");
                         ui.vertical(|ui| {
-                            if let None = &self.character.name {
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut desired_level).desired_width(50.0),
-                                );
-                            }
-                            if let Ok(level) = desired_level.parse::<u8>() {
-                                desired_level = level.to_string();
-                            }
-                            if let (Some(name), Some(level)) =
-                                (&self.character.name, &self.character.level)
-                            {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut character_selection)
+                                    .desired_width(50.0)
+                                    .hint_text(&insert_text),
+                            );
+                            // TODO Implement Char
+                            if let Some(character) = self.characters.get(&character_selection) {
+                                insert_text = character.name.clone();
+                    
+                                // Display character details
                                 ui.heading("Character Details");
-                                ui.label(format!("{:?}", name));
-                                ui.label(format!("Level: {}", level));
-                                ui.heading(format!("Inputs"));
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut desired_level).desired_width(50.0),
-                                );
+                                ui.label(format!("Name: {}", character.name.as_ref()));
+                                ui.label(format!("Level: {}", character.level.unwrap()));
                             }
+
                         });
                     });
                 });
 
-                // Buttons Group (placed below both groups)
+                // Buttons Group
                 ui.horizontal(|ui| {
                     if ui.button("Convert").clicked() {
                         let purple_reports = (self.reports.quantities[0] / 200.0)

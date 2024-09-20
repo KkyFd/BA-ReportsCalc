@@ -48,14 +48,26 @@ struct AppState {
     reports: Reports,
     textures: Icons,
     character: Character,
+    characters: Char,
+    character_selection_text: String,
 }
 
 impl AppState {
     fn new(cc: &eframe::CreationContext<'_>, reports: Reports, character: Character) -> Self {
+        let mut characters: HashMap<String, Character> = HashMap::new();
+        characters.insert(
+            String::from("Asuna"),
+            Character {
+                name: Some(String::from("Asuna")),
+                ..Character::default()
+            },
+        );
         Self {
             reports,
             textures: Self::load_textures(cc),
             character,
+            characters,
+            character_selection_text: String::from("Name"),
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -124,24 +136,19 @@ impl App for AppState {
 
                     // Characters Group
                     ui.group(|ui| {
-                        let mut character_selection = String::new();
-                        let mut insert_text = String::from("Name");
                         ui.vertical(|ui| {
                             ui.add(
-                                egui::TextEdit::singleline(&mut character_selection)
-                                    .desired_width(50.0)
-                                    .hint_text(&insert_text),
+                                egui::TextEdit::singleline(&mut self.character_selection_text)
+                                    .desired_width(50.0),
                             );
-                            // TODO Implement Char
-                            if let Some(character) = self.characters.get(&character_selection) {
-                                insert_text = character.name.clone();
-                    
+                            if let Some(character) =
+                                self.characters.get(&self.character_selection_text)
+                            {
                                 // Display character details
                                 ui.heading("Character Details");
-                                ui.label(format!("Name: {}", character.name.as_ref()));
+                                ui.label(format!("Name: {}", character.name.as_ref().unwrap()));
                                 ui.label(format!("Level: {}", character.level.unwrap()));
                             }
-
                         });
                     });
                 });

@@ -5,16 +5,26 @@ use std::{
     io::{Read, Write},
 };
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 pub struct Character {
     pub name: Option<String>,
     pub level: Option<u8>,
     pub skills: Option<[u8; 4]>,
 }
 
+impl Default for Character {
+    fn default() -> Self {
+        Character {
+            name: None,
+            level: Some(1),
+            skills: Some([1, 1, 1, 1]),
+        }
+    }
+}
+
 impl State for Character {
-    fn load_from_file(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut file = std::fs::File::open("characters.json")?;
+    fn load_from_file(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut file = std::fs::File::open(file_path)?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
         let character: Character = serde_json::from_str(&buffer)?;

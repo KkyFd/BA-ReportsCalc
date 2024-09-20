@@ -17,19 +17,23 @@ type Icons = HashMap<String, egui::TextureHandle>;
 type Char = HashMap<String, Character>;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let t = TestWrapper {
-        reports: Reports::default(),
-        character: Character::default(),
+    let wrapper = AppStateWrapper {
+        reports: Reports::load_from_file("reports.json").unwrap_or_default(),
+        character: Character::load_from_file("characters.json").unwrap_or_default(),
+    };
+    let options = eframe::NativeOptions {
+        min_size: Some(egui::vec2(800.0, 600.0)), 
+        ..Default::default() 
     };
     let _ = eframe::run_native(
         "BA Reports",
         eframe::NativeOptions::default(),
-        Box::new(|cc| Ok(Box::new(AppState::new(cc, t.reports, t.character)) as Box<dyn App>)),
+        Box::new(|cc| Ok(Box::new(AppState::new(cc, wrapper.reports, wrapper.character)) as Box<dyn App>)),
     );
     Ok(())
 }
 
-struct TestWrapper {
+struct AppStateWrapper {
     reports: Reports,
     character: Character,
 }
@@ -80,29 +84,50 @@ impl AppState {
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.group(|ui| {
-                ui.heading("Reports Amount");
-                let labels = [
-                    ("White Reports", "white_report"),
-                    ("Blue Reports", "blue_report"),
-                    ("Orange Reports", "orange_report"),
-                    ("Purple Reports", "purple_report"),
-                ];
-                // Text Boxes
-                for (i, (label, key)) in labels.iter().enumerate() {
-                    ui.horizontal(|ui| {
-                        if let Some(texture) = self.textures.get(*key) {
-                            ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
+            ui.horizontal(|ui| {
+                // Reports Group
+                ui.group(|ui| {
+                    let labels = [
+                        ("White Reports", "white_report"),
+                        ("Blue Reports", "blue_report"),
+                        ("Orange Reports", "orange_report"),
+                        ("Purple Reports", "purple_report"),
+                    ];
+                    // Reports Text Boxes
+                    ui.vertical(|ui| {
+                        ui.heading("Reports Amount");
+                        for (i, (label, key)) in labels.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                if let Some(texture) = self.textures.get(*key) {
+                                    ui.image((texture.id(), egui::Vec2::new(120.0, 120.0)));
+                                }
+                                let mut quantity_str = self.reports.quantities[i].to_string();
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut quantity_str)
+                                        .desired_width(50.0),
+                                );
+                                if let Ok(value) = quantity_str.parse::<f32>() {
+                                    self.reports.quantities[i] = value;
+                                }
+                                ui.label(format!("{}: {}", label, self.reports.quantities[i]));
+                            });
                         }
-                        let mut quantity_str = self.reports.quantities[i].to_string();
-                        ui.add(egui::TextEdit::singleline(&mut quantity_str).desired_width(50.0));
-                        if let Ok(value) = quantity_str.parse::<f32>() {
-                            self.reports.quantities[i] = value;
-                        }
-                        ui.label(format!("{}: {}", label, self.reports.quantities[i]));
                     });
+                });
+
+                // Characters Group
+                if let (Some(name), Some(level)) = (&self.character.name, &self.character.level) {
+                    ui.vertical(|ui|{
+                        ui.group(|ui| {
+                            ui.heading("Character Details");
+                            ui.label(format!("Character Name: {:?}", name));
+                            ui.label(format!("Level: {}", level));
+                        });
+                    });
+                    
                 }
             });
+
             // Buttons
             ui.horizontal(|ui| {
                 if ui.button("Convert").clicked() {

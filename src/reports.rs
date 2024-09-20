@@ -13,8 +13,8 @@ pub struct Reports {
 }
 
 impl State for Reports {
-    fn load_from_file(&self) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut file = std::fs::File::open("reports.json")?;
+    fn load_from_file(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut file = std::fs::File::open(file_path)?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
         let mut reports: Reports = serde_json::from_str(&buffer)?;

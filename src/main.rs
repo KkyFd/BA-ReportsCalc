@@ -1,6 +1,11 @@
 #![windows_subsystem = "windows"]
+mod character;
 mod reports;
+mod state;
+
+use character::Character;
 use reports::Reports;
+use state::State;
 
 use std::collections::HashMap;
 
@@ -10,27 +15,59 @@ use image::ImageReader;
 
 type Icons = HashMap<String, egui::TextureHandle>;
 
-fn main() {
+type Char = HashMap<String, Character>;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let wrapper = AppStateWrapper {
+        reports: Reports::load_from_file("reports.json").unwrap_or_default(),
+        character: Character::load_from_file("characters.json").unwrap_or_default(),
+    };
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder {
+            inner_size: Some(egui::vec2(800.0, 650.0)),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let _ = eframe::run_native(
         "BA Reports",
-        eframe::NativeOptions::default(),
+        options,
         Box::new(|cc| {
-            let reports = Reports::load_from_file("reports.json").unwrap_or_default();
-            Ok(Box::new(AppState::new(cc, reports)) as Box<dyn App>)
+            Ok(Box::new(AppState::new(cc, wrapper.reports, wrapper.character)) as Box<dyn App>)
         }),
     );
+    Ok(())
+}
+
+struct AppStateWrapper {
+    reports: Reports,
+    character: Character,
 }
 
 struct AppState {
     reports: Reports,
     textures: Icons,
+    character: Character,
+    characters: Char,
+    character_selection_text: String,
 }
 
 impl AppState {
-    fn new(cc: &eframe::CreationContext<'_>, reports: Reports) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, reports: Reports, character: Character) -> Self {
+        let mut characters: HashMap<String, Character> = HashMap::new();
+        characters.insert(
+            String::from("Asuna"),
+            Character {
+                name: Some(String::from("Asuna")),
+                ..Character::default()
+            },
+        );
         Self {
-            reports: reports,
+            reports,
             textures: Self::load_textures(cc),
+            character,
+            characters,
+            character_selection_text: String::from("Name"),
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -65,67 +102,100 @@ impl AppState {
 impl App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Reports Amount");
-            let labels = [
-                ("White Reports", "white_report"),
-                ("Blue Reports", "blue_report"),
-                ("Orange Reports", "orange_report"),
-                ("Purple Reports", "purple_report"),
-            ];
-
-            // Text Boxes
-            for (i, (label, key)) in labels.iter().enumerate() {
+            ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    if let Some(texture) = self.textures.get(*key) {
-                        ui.image((texture.id(), egui::Vec2::new(128.0, 120.0)));
-                    }
-                    let mut quantity_str = self.reports.quantities[i].to_string();
-                    ui.add(egui::TextEdit::singleline(&mut quantity_str).desired_width(50.0));
-                    if let Ok(value) = quantity_str.parse::<f32>() {
-                        self.reports.quantities[i] = value;
-                    }
-                    ui.label(format!("{}: {}", label, self.reports.quantities[i]));
+                    // Reports Group
+                    ui.group(|ui| {
+                        let labels = [
+                            ("White Reports", "white_report"),
+                            ("Blue Reports", "blue_report"),
+                            ("Orange Reports", "orange_report"),
+                            ("Purple Reports", "purple_report"),
+                        ];
+                        // Reports Text Boxes
+                        ui.vertical(|ui| {
+                            ui.heading("Reports Amount");
+                            for (i, (label, key)) in labels.iter().enumerate() {
+                                ui.horizontal(|ui| {
+                                    if let Some(texture) = self.textures.get(*key) {
+                                        ui.image((texture.id(), egui::Vec2::new(120.0, 120.0)));
+                                    }
+                                    let mut quantity_str = self.reports.quantities[i].to_string();
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut quantity_str)
+                                            .desired_width(50.0),
+                                    );
+                                    if let Ok(value) = quantity_str.parse::<f32>() {
+                                        self.reports.quantities[i] = value;
+                                    }
+                                    ui.label(format!("{}: {}", label, self.reports.quantities[i]));
+                                });
+                            }
+                        });
+                    });
+
+                    // Characters Group
+                    ui.group(|ui| {
+                        ui.vertical(|ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.character_selection_text)
+                                    .desired_width(50.0),
+                            );
+                            if let Some(character) =
+                                self.characters.get(&self.character_selection_text)
+                            {
+                                // Display character details
+                                ui.heading("Character Details");
+                                ui.label(format!("Name: {}", character.name.as_ref().unwrap()));
+                                ui.label(format!("Level: {}", character.level.unwrap()));
+                            }
+                        });
+                    });
                 });
-            }
 
-            // Buttons
-            ui.horizontal(|ui| {
-                if ui.button("Convert").clicked() {
-                    let purple_reports = (self.reports.quantities[0] / 200.0)
-                        + (self.reports.quantities[1] / 20.0)
-                        + (self.reports.quantities[2] / 5.0)
-                        + self.reports.quantities[3];
-                    let exp = purple_reports * 10000.0;
-                    self.reports.purple_reports = Some(purple_reports);
-                    self.reports.exp = Some(exp);
-                }
-
-                if ui.button("Clear").clicked() {
-                    self.reports.purple_reports = None;
-                    self.reports.exp = None;
-                }
-
-                if ui.button("Save").clicked() {
-                    let file_path = "reports.json";
-                    if let Err(err) = self.reports.save_to_file(file_path) {
-                        eprintln!("Failed to save reports: {}", err);
+                // Buttons Group
+                ui.horizontal(|ui| {
+                    if ui.button("Convert").clicked() {
+                        let purple_reports = (self.reports.quantities[0] / 200.0)
+                            + (self.reports.quantities[1] / 20.0)
+                            + (self.reports.quantities[2] / 5.0)
+                            + self.reports.quantities[3];
+                        let exp = purple_reports * 10000.0;
+                        self.reports.purple_reports = Some(purple_reports);
+                        self.reports.exp = Some(exp);
                     }
+
+                    if ui.button("Clear").clicked() {
+                        self.reports.purple_reports = None;
+                        self.reports.exp = None;
+                    }
+
+                    if ui.button("Save").clicked() {
+                        let reports_path = "reports.json";
+                        let character_path = "characters.json";
+                        if let Err(err) = self.reports.save_to_file(reports_path) {
+                            eprintln!("Failed to save reports: {}", err);
+                        }
+                        if let Err(err) = self.character.save_to_file(character_path) {
+                            eprintln!("Failed to save characters: {}", err);
+                        }
+                    }
+                });
+
+                // Bottom Results
+                if let Some(purple_reports) = self.reports.purple_reports {
+                    ui.separator();
+                    ui.label(format!(
+                        "Quantity of Orange Reports: {:.2}",
+                        purple_reports * 5.
+                    ));
+                    ui.label(format!("Quantity of Purple Reports: {:.2}", purple_reports));
+                }
+
+                if let Some(exp) = self.reports.exp {
+                    ui.label(format!("Quantity of EXP: {}", exp));
                 }
             });
-            
-            // Bottom Results
-            if let Some(purple_reports) = self.reports.purple_reports {
-                ui.separator();
-                ui.label(format!(
-                    "Quantity of Orange Reports: {:.2}",
-                    purple_reports * 5.
-                ));
-                ui.label(format!("Quantity of Purple Reports: {:.2}", purple_reports));
-            }
-
-            if let Some(exp) = self.reports.exp {
-                ui.label(format!("Quantity of EXP: {}", exp));
-            }
         });
     }
 }

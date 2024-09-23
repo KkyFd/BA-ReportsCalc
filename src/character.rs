@@ -8,16 +8,16 @@ use std::{
 #[derive(Serialize, Deserialize)]
 pub struct Character {
     pub name: Option<String>,
-    pub level: Option<u8>,
-    pub skills: Option<[u8; 4]>,
+    pub level: u8,
+    pub skills: [u8; 4],
 }
 
 impl Default for Character {
     fn default() -> Self {
         Character {
             name: None,
-            level: Some(1),
-            skills: Some([1, 1, 1, 1]),
+            level: 1,
+            skills: [1, 1, 1, 1],
         }
     }
 }

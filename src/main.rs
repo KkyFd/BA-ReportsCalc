@@ -5,6 +5,8 @@ mod state;
 
 use character::Character;
 use reports::Reports;
+use serde::Deserialize;
+use serde::Serialize;
 use state::State;
 
 use std::collections::HashMap;
@@ -43,13 +45,18 @@ struct AppStateWrapper {
     reports: Reports,
     character: Character,
 }
-
+#[derive(Serialize, Deserialize)]
+struct ExpTable {
+    exp_needed: Vec<u32>,
+}
 struct AppState {
     reports: Reports,
     textures: Icons,
     character: Character,
     characters: Char,
     character_selection_text: String,
+    exp_table: ExpTable,
+    desired_level: String,
 }
 
 impl AppState {
@@ -62,12 +69,16 @@ impl AppState {
                 ..Character::default()
             },
         );
+        let table = std::fs::File::open("level_table.json").expect("Failed to load JSON");
+        let exp_table: ExpTable = serde_json::from_reader(table).unwrap();
         Self {
             reports,
             textures: Self::load_textures(cc),
             character,
             characters,
-            character_selection_text: String::from("Name"),
+            character_selection_text: String::new(),
+            exp_table,
+            desired_level: String::new(),
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -137,25 +148,34 @@ impl App for AppState {
                     // Characters Group
                     ui.group(|ui| {
                         ui.vertical(|ui| {
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.character_selection_text)
-                                    .desired_width(50.0),
-                            );
+                            ui.heading("Character Details");
+                            ui.horizontal(|ui|{
+                                ui.label(format!("Name:"));
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.character_selection_text)
+                                        .desired_width(50.0),
+                                );
+                            });
                             if let Some(character) =
                                 self.characters.get(&self.character_selection_text)
                             {
-                                // Display character details
-                                ui.heading("Character Details");
-                                ui.label(format!("Name: {}", character.name.as_ref().unwrap()));
-                                ui.label(format!("Level: {}", character.level.unwrap()));
+                                ui.label(format!("Level: {}", character.level));
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("Desired level:"));
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut self.desired_level)
+                                            .desired_width(50.0),
+                                    );
+                                });
                             }
+                            
                         });
                     });
                 });
 
                 // Buttons Group
                 ui.horizontal(|ui| {
-                    if ui.button("Convert").clicked() {
+                    if ui.button("Calculate").clicked() {
                         let purple_reports = (self.reports.quantities[0] / 200.0)
                             + (self.reports.quantities[1] / 20.0)
                             + (self.reports.quantities[2] / 5.0)
@@ -163,6 +183,10 @@ impl App for AppState {
                         let exp = purple_reports * 10000.0;
                         self.reports.purple_reports = Some(purple_reports);
                         self.reports.exp = Some(exp);
+                        if let Ok(desired) = self.desired_level.parse::<u8>() {
+                            // NEED TO IMPLEMENT
+                            ui.label(format!("Exp needed to reach level {desired}: {}", ));
+                        }
                     }
 
                     if ui.button("Clear").clicked() {

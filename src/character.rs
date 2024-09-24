@@ -8,8 +8,9 @@ use std::{
 #[derive(Serialize, Deserialize)]
 pub struct Character {
     pub name: Option<String>,
-    pub level: u8,
     pub skills: [u8; 4],
+    pub current_exp: String,
+    pub level: u8,
 }
 
 impl Default for Character {
@@ -18,6 +19,7 @@ impl Default for Character {
             name: None,
             level: 1,
             skills: [1, 1, 1, 1],
+            current_exp: String::new(),
         }
     }
 }

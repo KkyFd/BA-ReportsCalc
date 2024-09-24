@@ -57,6 +57,7 @@ struct AppState {
     character_selection_text: String,
     exp_table: ExpTable,
     desired_level: String,
+    exp_needed_message: String,
 }
 
 impl AppState {
@@ -79,6 +80,7 @@ impl AppState {
             character_selection_text: String::new(),
             exp_table,
             desired_level: String::new(),
+            exp_needed_message: String::new(),
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -149,7 +151,7 @@ impl App for AppState {
                     ui.group(|ui| {
                         ui.vertical(|ui| {
                             ui.heading("Character Details");
-                            ui.horizontal(|ui|{
+                            ui.horizontal(|ui| {
                                 ui.label(format!("Name:"));
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.character_selection_text)
@@ -161,14 +163,22 @@ impl App for AppState {
                             {
                                 ui.label(format!("Level: {}", character.level));
                                 ui.horizontal(|ui| {
+                                    ui.label(format!("Current Exp:"));
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut self.character.current_exp)
+                                            .desired_width(50.0)
+                                            .hint_text("EXP"),
+                                    );
+                                });
+                                ui.horizontal(|ui| {
                                     ui.label(format!("Desired level:"));
                                     ui.add(
                                         egui::TextEdit::singleline(&mut self.desired_level)
-                                            .desired_width(50.0),
+                                            .desired_width(50.0)
+                                            .hint_text("Level"),
                                     );
                                 });
                             }
-                            
                         });
                     });
                 });
@@ -184,14 +194,29 @@ impl App for AppState {
                         self.reports.purple_reports = Some(purple_reports);
                         self.reports.exp = Some(exp);
                         if let Ok(desired) = self.desired_level.parse::<u8>() {
-                            // NEED TO IMPLEMENT
-                            ui.label(format!("Exp needed to reach level {desired}: {}", ));
+                            let desired_index = desired - 1;
+                            if let Ok(current_exp) = self.character.current_exp.parse::<u32>() {
+                                if self.character.level < desired_index {
+                                    self.exp_needed_message = format!(
+                                        "Exp needed to reach level {desired}: {}",
+                                        current_exp
+                                            - self.exp_table.exp_needed[desired_index as usize]
+                                    );
+                                } else {
+                                    self.exp_needed_message = format!(
+                                        "Current level is higher or equal to the desired level."
+                                    );
+                                }
+                            }
+                        } else {
+                            self.exp_needed_message = format!("Invalid desired level input.");
                         }
                     }
 
                     if ui.button("Clear").clicked() {
                         self.reports.purple_reports = None;
                         self.reports.exp = None;
+                        self.exp_needed_message.clear();
                     }
 
                     if ui.button("Save").clicked() {
@@ -219,6 +244,8 @@ impl App for AppState {
                 if let Some(exp) = self.reports.exp {
                     ui.label(format!("Quantity of EXP: {}", exp));
                 }
+
+                ui.label(&self.exp_needed_message);
             });
         });
     }

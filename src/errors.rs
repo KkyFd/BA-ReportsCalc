@@ -7,12 +7,3 @@ pub enum AppError {
     #[error("Please insert a number")]
     InvalidValue,
 }
-
-/* impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AppError::SmallerLevel => write!(f, "C"),
-            AppError::InvalidValue => write!(f, ""),
-        }
-    }
-} */

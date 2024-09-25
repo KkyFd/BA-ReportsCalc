@@ -131,6 +131,7 @@ impl AppState {
             .current_exp
             .parse::<u32>()
             .map_err(|_| AppError::InvalidValue)?;
+        // This will crash with the current implementation, need to fix
         let total_exp = self.exp_table.exp_needed[desired_index as usize] + current_exp;
         if self.character.level < desired_index {
             Ok(format!(
@@ -251,7 +252,10 @@ impl App for AppState {
                     ui.label(format!("Quantity of EXP: {}", exp));
                 }
 
-                //ui.label(&self.calc_result);
+                match &self.calc_result {
+                    Ok(message) => ui.label(message),
+                    Err(err) => ui.label(err.to_string()),
+                }
             });
         });
     }

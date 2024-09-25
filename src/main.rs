@@ -1,13 +1,15 @@
 #![windows_subsystem = "windows"]
 mod character;
+mod errors;
 mod reports;
 mod state;
 
 use character::Character;
+use errors::AppError;
 use reports::Reports;
 use serde::Deserialize;
-use serde::Serialize;
 use state::State;
+use thiserror::*;
 
 use std::collections::HashMap;
 
@@ -45,7 +47,7 @@ struct AppStateWrapper {
     reports: Reports,
     character: Character,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct ExpTable {
     exp_needed: Vec<u32>,
 }
@@ -57,7 +59,7 @@ struct AppState {
     character_selection_text: String,
     exp_table: ExpTable,
     desired_level: String,
-    exp_needed_message: String,
+    calc_result: Result<String, AppError>,
 }
 
 impl AppState {
@@ -66,7 +68,7 @@ impl AppState {
         characters.insert(
             String::from("Asuna"),
             Character {
-                name: Some(String::from("Asuna")),
+                name: String::from("Asuna"),
                 ..Character::default()
             },
         );
@@ -80,7 +82,7 @@ impl AppState {
             character_selection_text: String::new(),
             exp_table,
             desired_level: String::new(),
-            exp_needed_message: String::new(),
+            calc_result: Ok(String::new()),
         }
     }
     fn load_textures(cc: &eframe::CreationContext<'_>) -> Icons {
@@ -109,6 +111,35 @@ impl AppState {
                 (key.to_string(), texture)
             })
             .collect()
+    }
+    fn calculate(&mut self) -> Result<String, AppError> {
+        let purple_reports = (self.reports.quantities[0] / 200.0)
+            + (self.reports.quantities[1] / 20.0)
+            + (self.reports.quantities[2] / 5.0)
+            + self.reports.quantities[3];
+        let exp = purple_reports * 10000.0;
+        self.reports.purple_reports = Some(purple_reports);
+        self.reports.exp = Some(exp);
+
+        let desired = self
+            .desired_level
+            .parse::<u8>()
+            .map_err(|_| AppError::InvalidValue)?;
+        let desired_index = desired - 1;
+        let current_exp = self
+            .character
+            .current_exp
+            .parse::<u32>()
+            .map_err(|_| AppError::InvalidValue)?;
+        let total_exp = self.exp_table.exp_needed[desired_index as usize] + current_exp;
+        if self.character.level < desired_index {
+            Ok(format!(
+                "Exp needed to reach level {desired}: {}",
+                self.exp_table.exp_needed[desired_index as usize] - total_exp
+            ))
+        } else {
+            Err(AppError::SmallerLevel)
+        }
     }
 }
 
@@ -167,7 +198,7 @@ impl App for AppState {
                                     ui.add(
                                         egui::TextEdit::singleline(&mut self.character.current_exp)
                                             .desired_width(50.0)
-                                            .hint_text("EXP"),
+                                            .hint_text("Level EXP"),
                                     );
                                 });
                                 ui.horizontal(|ui| {
@@ -186,37 +217,12 @@ impl App for AppState {
                 // Buttons Group
                 ui.horizontal(|ui| {
                     if ui.button("Calculate").clicked() {
-                        let purple_reports = (self.reports.quantities[0] / 200.0)
-                            + (self.reports.quantities[1] / 20.0)
-                            + (self.reports.quantities[2] / 5.0)
-                            + self.reports.quantities[3];
-                        let exp = purple_reports * 10000.0;
-                        self.reports.purple_reports = Some(purple_reports);
-                        self.reports.exp = Some(exp);
-                        if let Ok(desired) = self.desired_level.parse::<u8>() {
-                            let desired_index = desired - 1;
-                            if let Ok(current_exp) = self.character.current_exp.parse::<u32>() {
-                                if self.character.level < desired_index {
-                                    self.exp_needed_message = format!(
-                                        "Exp needed to reach level {desired}: {}",
-                                        current_exp
-                                            - self.exp_table.exp_needed[desired_index as usize]
-                                    );
-                                } else {
-                                    self.exp_needed_message = format!(
-                                        "Current level is higher or equal to the desired level."
-                                    );
-                                }
-                            }
-                        } else {
-                            self.exp_needed_message = format!("Invalid desired level input.");
-                        }
+                        self.calc_result = self.calculate();
                     }
 
                     if ui.button("Clear").clicked() {
                         self.reports.purple_reports = None;
                         self.reports.exp = None;
-                        self.exp_needed_message.clear();
                     }
 
                     if ui.button("Save").clicked() {
@@ -245,7 +251,7 @@ impl App for AppState {
                     ui.label(format!("Quantity of EXP: {}", exp));
                 }
 
-                ui.label(&self.exp_needed_message);
+                //ui.label(&self.calc_result);
             });
         });
     }

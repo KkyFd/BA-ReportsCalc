@@ -4,11 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.89"
 eframe = { version = "0.28.1"}
 egui = { version = "0.28.1"}
 image = { version = "0.25.2", default-features = false }
 serde = { version = "1.0.210", features = ["derive"], default-features = false }
 serde_json = { version = "1.0.128"}
+thiserror = "1.0.64"
 
 [profile.release]
 opt-level = "z"
